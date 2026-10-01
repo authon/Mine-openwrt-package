@@ -1,0 +1,80 @@
+# Immortalwrt 分支的插件同步清单
+# 格式：本地目录名|上游仓库|上游分支|上游里的子目录|本地里的目标子目录|备注
+# 详细说明见 _sync/README.md；改完提交到本分支，然后 Actions → 同步插件 → Run workflow
+
+# ── 从原始上游同步 ──
+luci-app-adguardhome|sirpdboy/luci-app-adguardhome|main|luci-app-adguardhome||已验证 相似度0.87
+luci-app-amlogic|ophub/luci-app-amlogic|main|luci-app-amlogic||已验证 相似度1.00（人工校正）
+luci-app-autoipsetadder|rufengsuixing/luci-app-autoipsetadder|master|||已验证 相似度0.80（人工校正）
+luci-app-gost|kenzok78/luci-app-gost|main|||已验证 相似度0.83（人工校正）
+luci-app-ikoolproxy|ilxp/luci-app-ikoolproxy|main|||已验证 相似度0.96
+luci-app-nginx-manager|Vera2016/luci-app-nginx-manager|main|||已验证 相似度0.80
+luci-app-npc|a1303045940/luci-app-npc|main|||已验证 相似度0.80（人工校正）
+luci-app-onliner|danchexiaoyang/luci-app-onliner|main|luci-app-onliner||已验证 相似度0.80（人工校正）
+luci-app-partexp|sirpdboy/luci-app-partexp|main|luci-app-partexp||已验证 相似度1.00（人工校正）
+luci-app-passwall|Openwrt-Passwall/openwrt-passwall|main|luci-app-passwall||人工逐一核实（仓库/分支/子目录都存在）
+luci-app-passwall2|Openwrt-Passwall/openwrt-passwall2|main|luci-app-passwall2||人工逐一核实（仓库/分支/子目录都存在）
+luci-app-qfirehose|ntbowen/luci-app-qfirehose|main|||已验证 相似度0.89
+luci-app-quickstart|lq-wq/luci-app-quickstart|main|||已验证 相似度0.86（人工校正）
+luci-app-ssr-plus|fw876/helloworld|dev|luci-app-ssr-plus||人工逐一核实（仓库/分支/子目录都存在）
+luci-app-taskplan|sirpdboy/luci-app-taskplan|main|luci-app-taskplan||已验证 相似度1.00
+luci-app-tencentddns|msylgj/luci-app-tencentddns|main|||已验证 相似度0.82
+luci-app-timecontrol|sirpdboy/luci-app-timecontrol|main|||已验证 相似度0.89
+luci-app-watchdog|sirpdboy/luci-app-watchdog|main|||已验证 相似度0.81
+
+# ── 从 kenzok8 兜底（没找到原始上游）──
+luci-app-baidudrive|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-cloudflarespeedtest|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-ddns-go|@kenzok8||||原始上游未达 0.90（0.78），kenzok8 兜底
+luci-app-ddnsto|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-dockermanager|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-eqosplus|@kenzok8||||原始上游未达 0.90（0.77），kenzok8 兜底
+luci-app-fastnet|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-floatip|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-iperf3-server|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-istoreenhance|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-istorerouter|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-istorex|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-kai|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-kaiplus|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-linkease|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-linkeasefull-embed|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-linkeasefull|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-lucky|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-msd_lite|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-natter|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-natter2|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-nikki|@kenzok8||||原始上游未达 0.90（0.75），kenzok8 兜底
+luci-app-oled|@kenzok8||||原始上游未达 0.90（0.76），kenzok8 兜底
+luci-app-poweroffdevice|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-pushbot|@kenzok8||||原始上游未达 0.90（0.72），kenzok8 兜底
+luci-app-store|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-supervisord|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-tcpdump|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-unishare|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-webd|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-theme-istorenas|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+
+# ── 冻结，不更新（你想接手就把它改成真实上游）──
+luci-app-qmodem|@frozen||||没找到可用上游，保持现状
+
+# ── relevance/ 里面的依赖包 ──
+relevance|@frozen||WiFiPortal|WiFiPortal|没找到上游，保持现状
+relevance|@kenzok8||adguardhome|adguardhome|依赖包，kenzok8 兜底
+relevance|@kenzok8||cdnspeedtest|cdnspeedtest|依赖包，kenzok8 兜底
+relevance|@kenzok8||doc|doc|依赖包，kenzok8 兜底
+relevance|@kenzok8||gost|gost|依赖包，kenzok8 兜底
+relevance|@kenzok8||luci-lib-iform|luci-lib-iform|依赖包，kenzok8 兜底
+relevance|@kenzok8||luci-lib-linkeaseauth|luci-lib-linkeaseauth|依赖包，kenzok8 兜底
+relevance|@kenzok8||luci-lib-linkeasefile|luci-lib-linkeasefile|依赖包，kenzok8 兜底
+relevance|@kenzok8||luci-mod-istorenext|luci-mod-istorenext|依赖包，kenzok8 兜底
+relevance|@kenzok8||luci-nginxer|luci-nginxer|依赖包，kenzok8 兜底
+relevance|@kenzok8||msd_lite|msd_lite|依赖包，kenzok8 兜底
+relevance|@frozen||nas-packages|nas-packages|没找到上游，保持现状
+relevance|@kenzok8||natter|natter|依赖包，kenzok8 兜底
+relevance|@kenzok8||natter2|natter2|依赖包，kenzok8 兜底
+relevance|xiaorouji/openwrt-passwall-packages|main||passwall-packages|passwall 依赖包（原始上游）
+relevance|@frozen||quectel_cm-5G|quectel_cm-5G|没找到上游，保持现状
+relevance|@frozen||quectel_cm|quectel_cm|没找到上游，保持现状
+relevance|@kenzok8||upx-static|upx-static|依赖包，kenzok8 兜底
+relevance|@kenzok8||webd|webd|依赖包，kenzok8 兜底
