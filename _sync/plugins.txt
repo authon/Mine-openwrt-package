@@ -1,0 +1,30 @@
+# Theme1 分支的插件同步清单
+# 格式：本地目录名|上游仓库|上游分支|上游里的子目录|本地里的目标子目录|备注
+# 详细说明见 _sync/README.md；改完提交到本分支，然后 Actions → 同步插件 → Run workflow
+
+# ── 从原始上游同步 ──
+luci-app-advancedplus|sirpdboy/luci-app-advancedplus|main|||已验证 相似度0.88（人工校正）
+luci-theme-Butterfly-dark|Leo-Jo-My/luci-theme-Butterfly-dark|master|||已验证 相似度0.98
+luci-theme-Butterfly|Leo-Jo-My/luci-theme-Butterfly|master|||已验证 相似度0.98
+luci-theme-Light|Aslin-Ameng/luci-theme-Light|master|luci-theme-Light||已验证 相似度1.00
+luci-theme-argon-light-mod|Leo-Jo-My/luci-theme-argon-light-mod|master|||已验证 相似度0.98
+luci-theme-design|0x676e67/luci-theme-design|main|||已验证 相似度0.93（人工校正）
+luci-theme-opentopd|sirpdboy/luci-theme-opentopd|master|||已验证 相似度0.94（人工校正）
+
+# ── 从 kenzok8 兜底（没找到原始上游）──
+luci-app-argon-config|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-design-config|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-mosdns|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-netkeeper-interception|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
+luci-app-smartdns|@kenzok8||||原始上游未达 0.90（0.78），kenzok8 兜底
+
+# ── 冻结，不更新（你想接手就把它改成真实上游）──
+luci-theme-argon-dark-mod|@frozen||||没找到可用上游，保持现状
+luci-theme-bootstrap-mod|@frozen||||没找到可用上游，保持现状
+
+# ── relevance/ 里面的依赖包 ──
+relevance|@kenzok8||luci-proto-netkeeper|luci-proto-netkeeper|依赖包，kenzok8 兜底
+relevance|@kenzok8||netkeeper-interception|netkeeper-interception|依赖包，kenzok8 兜底
+relevance|@kenzok8||netkeeper|netkeeper|依赖包，kenzok8 兜底
+relevance|@frozen||openwrt-smartdns|openwrt-smartdns|没找到上游，保持现状
+relevance|@kenzok8||v2dat|v2dat|依赖包，kenzok8 兜底
