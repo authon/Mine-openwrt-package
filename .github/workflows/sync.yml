@@ -149,7 +149,10 @@ jobs:
               printf '%s|%s|fail||||\n' "$B" "$dir" >> /tmp/plan.txt
             fi
           done < /tmp/raw.txt
-          echo "计划：kenzok8 $(( $(grep -c '|kz|' /tmp/plan.txt || echo 0) )) 条，原始上游 $(( $(grep -c '|up|' /tmp/plan.txt || echo 0) )) 条，无来源 $(( $(grep -c '|fail|' /tmp/plan.txt || echo 0) )) 条"
+          KZ_N="$(grep -c '|kz|' /tmp/plan.txt 2>/dev/null || true)"; KZ_N="${KZ_N:-0}"
+          UP_N="$(grep -c '|up|' /tmp/plan.txt 2>/dev/null || true)"; UP_N="${UP_N:-0}"
+          FAIL_N="$(grep -c '|fail|' /tmp/plan.txt 2>/dev/null || true)"; FAIL_N="${FAIL_N:-0}"
+          echo "计划：kenzok8 ${KZ_N} 条，原始上游 ${UP_N} 条，无来源 ${FAIL_N} 条"
 
           # 1d. 需要的内容：kenzok8 稀疏检出 + 回退用的原始上游
           echo "::group::准备内容"
