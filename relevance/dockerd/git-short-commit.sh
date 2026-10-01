@@ -1,3 +1,4 @@
+
 #!/bin/sh
 #
 #	USAGE: git-short-commit.sh <GIT_URL> <GIT_REF> <GIT_DIR>
@@ -20,6 +21,9 @@ if [ -z "${GIT_REF}" ]; then
 	error "Git reference not specified"
 fi
 
+# Remove docker- prefix if present (e.g., docker-v29.2.1 -> v29.2.1)
+GIT_REF=$(echo "$GIT_REF" | sed 's/^docker-//')
+
 GIT_DIR="${3}"
 if [ -z "${GIT_DIR}" ]; then
 	error "Git clone directory not specified"
@@ -39,7 +43,7 @@ git init --quiet "${GIT_DIR}"
 
 		if git fetch --depth 1 origin "${GIT_REF}"; then
 			git checkout --detach FETCH_HEAD --
-			git rev-parse --short=7 HEAD
+			git rev-parse --short HEAD
 			break
 		fi
 
