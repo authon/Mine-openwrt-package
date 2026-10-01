@@ -1,0 +1,30 @@
+# passwall 分支的插件同步清单
+# 格式：本地目录名|上游仓库|上游分支|上游里的子目录|本地里的目标子目录|备注
+# 详细说明见 _sync/README.md；改完提交到本分支，然后 Actions → 同步插件 → Run workflow
+
+# ── 从原始上游同步 ──
+luci-app-passwall|Openwrt-Passwall/openwrt-passwall|main|luci-app-passwall||人工逐一核实（仓库/分支/子目录都存在）
+luci-app-passwall2|Openwrt-Passwall/openwrt-passwall2|main|luci-app-passwall2||人工逐一核实（仓库/分支/子目录都存在）
+
+# ── relevance/ 里面的依赖包 ──
+relevance|@kenzok8||chinadns-ng|chinadns-ng|依赖包，kenzok8 兜底
+relevance|@kenzok8||dns2socks|dns2socks|依赖包，kenzok8 兜底
+relevance|@kenzok8||geoview|geoview|依赖包，kenzok8 兜底
+relevance|@kenzok8||hysteria|hysteria|依赖包，kenzok8 兜底
+relevance|@kenzok8||ipt2socks|ipt2socks|依赖包，kenzok8 兜底
+relevance|@frozen||kcptun|kcptun|没找到上游，保持现状
+relevance|@kenzok8||microsocks|microsocks|依赖包，kenzok8 兜底
+relevance|@kenzok8||naiveproxy|naiveproxy|依赖包，kenzok8 兜底
+relevance|@kenzok8||shadow-tls|shadow-tls|依赖包，kenzok8 兜底
+relevance|@kenzok8||shadowsocks-libev|shadowsocks-libev|依赖包，kenzok8 兜底
+relevance|@kenzok8||shadowsocks-rust|shadowsocks-rust|依赖包，kenzok8 兜底
+relevance|@kenzok8||shadowsocksr-libev|shadowsocksr-libev|依赖包，kenzok8 兜底
+relevance|@kenzok8||simple-obfs|simple-obfs|依赖包，kenzok8 兜底
+relevance|@kenzok8||sing-box|sing-box|依赖包，kenzok8 兜底
+relevance|@kenzok8||tcping|tcping|依赖包，kenzok8 兜底
+relevance|@kenzok8||trojan-plus|trojan-plus|依赖包，kenzok8 兜底
+relevance|@kenzok8||tuic-client|tuic-client|依赖包，kenzok8 兜底
+relevance|@kenzok8||v2ray-geodata|v2ray-geodata|依赖包，kenzok8 兜底
+relevance|@kenzok8||v2ray-plugin|v2ray-plugin|依赖包，kenzok8 兜底
+relevance|@kenzok8||xray-core|xray-core|依赖包，kenzok8 兜底
+relevance|@kenzok8||xray-plugin|xray-plugin|依赖包，kenzok8 兜底
