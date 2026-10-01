@@ -11,7 +11,7 @@ local m,s,e
 m = Map("advancedplus")
 m.title = translate("Loading plugins")
 m.description = translate("Choose to load and install the app store, DOCKER, all drivers, etc")..
-translate("</br>")..translate("<a href=\'' target=\'_blank\'></a>")
+translate("</br>For specific usage, see:")..translate("<a href=\'https://github.com/sirpdboy/luci-app-advancedplus.git' target=\'_blank\'>GitHub @sirpdboy/luci-app-advancedplus </a>")
 m.apply_on_parse=true
 
 s=m:section(TypedSection, "basic", "")
