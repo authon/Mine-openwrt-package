@@ -1,0 +1,34 @@
+# helloworld 分支的插件同步清单
+# 格式：本地目录名|上游仓库|上游分支|上游里的子目录|本地里的目标子目录|备注
+# 详细说明见 _sync/README.md；改完提交到本分支，然后 Actions → 同步插件 → Run workflow
+
+# ── 从原始上游同步 ──
+luci-app-ssr-plus|fw876/helloworld|dev|luci-app-ssr-plus||人工逐一核实（仓库/分支/子目录都存在）
+
+# ── relevance/ 里面的依赖包 ──
+relevance|@kenzok8||chinadns-ng|chinadns-ng|依赖包，kenzok8 兜底
+relevance|@kenzok8||dns2socks-rust|dns2socks-rust|依赖包，kenzok8 兜底
+relevance|@kenzok8||dns2socks|dns2socks|依赖包，kenzok8 兜底
+relevance|@kenzok8||dns2tcp|dns2tcp|依赖包，kenzok8 兜底
+relevance|@kenzok8||dnsproxy|dnsproxy|依赖包，kenzok8 兜底
+relevance|@kenzok8||gn|gn|依赖包，kenzok8 兜底
+relevance|@kenzok8||hysteria|hysteria|依赖包，kenzok8 兜底
+relevance|@kenzok8||ipt2socks|ipt2socks|依赖包，kenzok8 兜底
+relevance|@kenzok8||lua-neturl|lua-neturl|依赖包，kenzok8 兜底
+relevance|@kenzok8||microsocks|microsocks|依赖包，kenzok8 兜底
+relevance|@kenzok8||mosdns|mosdns|依赖包，kenzok8 兜底
+relevance|@kenzok8||naiveproxy|naiveproxy|依赖包，kenzok8 兜底
+relevance|@kenzok8||redsocks2|redsocks2|依赖包，kenzok8 兜底
+relevance|@kenzok8||shadow-tls|shadow-tls|依赖包，kenzok8 兜底
+relevance|@kenzok8||shadowsocks-libev|shadowsocks-libev|依赖包，kenzok8 兜底
+relevance|@kenzok8||shadowsocks-rust|shadowsocks-rust|依赖包，kenzok8 兜底
+relevance|@kenzok8||shadowsocksr-libev|shadowsocksr-libev|依赖包，kenzok8 兜底
+relevance|@kenzok8||simple-obfs|simple-obfs|依赖包，kenzok8 兜底
+relevance|@kenzok8||tcping|tcping|依赖包，kenzok8 兜底
+relevance|@kenzok8||trojan|trojan|依赖包，kenzok8 兜底
+relevance|@kenzok8||tuic-client|tuic-client|依赖包，kenzok8 兜底
+relevance|@kenzok8||v2ray-core|v2ray-core|依赖包，kenzok8 兜底
+relevance|@kenzok8||v2ray-plugin|v2ray-plugin|依赖包，kenzok8 兜底
+relevance|@kenzok8||v2raya|v2raya|依赖包，kenzok8 兜底
+relevance|@kenzok8||xray-core|xray-core|依赖包，kenzok8 兜底
+relevance|@kenzok8||xray-plugin|xray-plugin|依赖包，kenzok8 兜底
