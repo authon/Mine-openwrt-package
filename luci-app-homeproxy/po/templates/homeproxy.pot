@@ -1714,7 +1714,7 @@ msgid "Path"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:911
-msgid "Peer pubkic key"
+msgid "Peer public key"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:329
@@ -1748,7 +1748,7 @@ msgid "Port"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:276
-msgid "Port %s alrealy exists!"
+msgid "Port %s already exists!"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:582
@@ -3048,4 +3048,9 @@ msgstr ""
 
 #: htdocs/luci-static/resources/homeproxy.js:328
 msgid "valid uuid"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:313
+#: htdocs/luci-static/resources/view/homeproxy/server.js:782
+msgid "UDP NAT expiration time"
 msgstr ""
