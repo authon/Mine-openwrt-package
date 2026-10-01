@@ -1,0 +1,9 @@
+# adguard 分支的插件同步清单
+# 格式：本地目录名|上游仓库|上游分支|上游里的子目录|本地里的目标子目录|备注
+# 详细说明见 _sync/README.md；改完提交到本分支，然后 Actions → 同步插件 → Run workflow
+
+# ── 从原始上游同步 ──
+luci-app-adguardhome|sirpdboy/luci-app-adguardhome|main|luci-app-adguardhome||已验证 相似度0.87
+
+# ── 从 kenzok8 兜底（没找到原始上游）──
+adguardhome|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
