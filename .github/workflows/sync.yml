@@ -1,18 +1,18 @@
 name: 同步插件
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  从每个插件的【原始上游仓库】拉最新代码，覆盖到本仓库对应分支的插件目录。
-#  找不到原始上游的插件，清单里写 @kenzok8，会从 kenzok8/small-package 兜底同步。
+#  按各分支的 _sync/plugins.txt，把插件目录更新到最新。
 #
-#  清单在哪：每个分支根目录的 _sync/plugins.txt
-#  怎么加插件：切到目标分支 → 编辑 _sync/plugins.txt → 加一行 → 提交，
-#             然后到 Actions → 同步插件 → Run workflow 跑一次
-#  格式说明见：_sync/README.md
+#  从哪拿代码由默认分支的 _sync/settings.ini 决定：
+#    SYNC_SOURCE="kenzok8"   （默认）全部从 kenzok8/small-package 取同名目录；
+#                            kenzok8 里没有的，自动回退到该插件的原始上游
+#    SYNC_SOURCE="upstream"  优先按清单里的原始上游取；拿不到才用 kenzok8
 #
-#  手动运行参数：
-#    BRANCHES  留空 = 全部 11 个分支；也可以填 "Immortalwrt,Lede"
-#    DRY_RUN   1 = 只对比不推送（先看报告，推荐第一次这样跑）
-#    ONLY_DIR  只同步某一个插件目录（调试用），留空 = 全部
+#  怎么加插件：切到目标分支 → 编辑 _sync/plugins.txt → 加一行 → 提交
+#  手动运行：Actions → 同步插件 → Run workflow
+#    BRANCHES  留空 = 全部 11 个分支；也可填 "Immortalwrt,Theme1"
+#    DRY_RUN   1 = 只对比不推送（先看报告）
+#    ONLY_DIR  只同步某一个插件目录（调试用）
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -23,7 +23,7 @@ on:
         required: false
         default: ''
       DRY_RUN:
-        description: '只对比不推送（1 = 是，推荐第一次先这样跑）'
+        description: '只对比不推送（1 = 是）'
         required: false
         default: '1'
       ONLY_DIR:
@@ -53,7 +53,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo -E apt-get -qq update
-          sudo -E apt-get -qq install -y git rsync
+          sudo -E apt-get -qq install -y git rsync curl
           sudo timedatectl set-timezone "$TZ"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
@@ -69,7 +69,8 @@ jobs:
           echo "only=${{ github.event.inputs.ONLY_DIR }}"  >> $GITHUB_OUTPUT
           echo "本次分支: $LIST"
 
-      - name: 收集清单并克隆上游
+      # ── 1. 读开关 + 拉各分支清单 + 决定每条从哪拿 ─────────────────────────
+      - name: 收集清单并决定来源
         env:
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
           BRANCHES: ${{ steps.plan.outputs.branches }}
@@ -83,36 +84,25 @@ jobs:
           AUTH="https://x-access-token:${REPO_TOKEN}@github.com"
           ONLY="${ONLY_DIR:-}"
           mkdir -p /tmp/up /tmp/br
-          : > /tmp/manifests.txt
-          : > /tmp/branches-used.txt
+          : > /tmp/raw.txt; : > /tmp/branches-used.txt
 
-          # ── 0. 读默认分支上的 _sync/settings.ini，决定从哪拿代码 ──
           DEF="$(curl -s -H "Authorization: Bearer ${REPO_TOKEN}" "https://api.github.com/repos/${REPO}" \
                  | sed -n 's/.*"default_branch": *"\([^"]*\)".*/\1/p' | head -1)"
           [ -z "$DEF" ] && DEF=Lede
           SETTINGS="$(curl -s "https://raw.githubusercontent.com/${REPO}/${DEF}/_sync/settings.ini")"
           SYNC_SOURCE="$(printf '%s\n' "$SETTINGS" | sed -n 's/^[[:space:]]*SYNC_SOURCE[[:space:]]*=[[:space:]]*//p' | tr -d '"' | head -1)"
           SYNC_SOURCE="${SYNC_SOURCE:-kenzok8}"
-          echo "默认分支 = ${DEF}"
-          echo "SYNC_SOURCE = ${SYNC_SOURCE}  （kenzok8 = 全部走 kenzok8；upstream = 优先走原始上游）"
-          if [ "$SYNC_SOURCE" != "upstream" ]; then
-            echo "→ 本次全部从 ${KENZOK8} 取（清单里的原始上游仅作记录）"
-          else
-            echo "→ 本次优先按清单里的原始上游取，取不到才用 ${KENZOK8}"
-          fi
+          echo "默认分支 = ${DEF} ；SYNC_SOURCE = ${SYNC_SOURCE}"
 
-          # ── 1. 拉每个分支，收集清单（规范化成 5 列：分支|目录|上游|分支|源子目录|目标子目录）──
+          # 1a. 拉分支 + 收集原始清单（保留原始上游，不做替换）
+          #     格式：分支|目录|原始上游|原始分支|原始子目录|本地子目录|kenzok8里的目录名
           for B in ${BRANCHES//,/ }; do
             echo "::group::拉取分支 $B"
             if ! git clone -q --depth=1 --single-branch --branch "$B" "${AUTH}/${REPO}.git" "/tmp/br/$B"; then
-              echo "::warning::分支 $B 拉不下来，跳过"
-              echo "::endgroup::"; continue
+              echo "::warning::分支 $B 拉不下来，跳过"; echo "::endgroup::"; continue
             fi
             M="/tmp/br/$B/_sync/plugins.txt"
-            if [ ! -f "$M" ]; then
-              echo "::warning::分支 $B 没有 _sync/plugins.txt，跳过"
-              echo "::endgroup::"; continue
-            fi
+            if [ ! -f "$M" ]; then echo "::warning::分支 $B 没有清单，跳过"; echo "::endgroup::"; continue; fi
             echo "$B" >> /tmp/branches-used.txt
             grep -v -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$M" | while IFS='|' read -r dir up br sub lsub note; do
               dir="$(echo "${dir:-}" | xargs)"; up="$(echo "${up:-}" | xargs)"
@@ -120,54 +110,82 @@ jobs:
               [ -z "$dir" ] && continue
               [ -n "$ONLY" ] && [ "$dir" != "$ONLY" ] && continue
               [ "$up" = "@frozen" ] && continue
-              # 开关：非 upstream 模式下一律改走 kenzok8（下面那段会按同名目录补 sub）
-              [ "$SYNC_SOURCE" != "upstream" ] && up="@kenzok8"
-              if [ "$up" = "@kenzok8" ]; then
-                up="$KENZOK8"; br="$KENZOK8_REF"
-                [ -z "$sub" ] && sub="${lsub:-$dir}"
-              fi
-              printf '%s|%s|%s|%s|%s|%s\n' "$B" "$dir" "$up" "$br" "$sub" "$lsub" >> /tmp/manifests.txt
+              [ "$up" = "@kenzok8" ] && { up=""; br=""; sub=""; }
+              printf '%s|%s|%s|%s|%s|%s|%s\n' "$B" "$dir" "$up" "$br" "$sub" "$lsub" "${lsub:-$dir}" >> /tmp/raw.txt
             done
-            echo "$B: 清单 $(grep -vc -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$M") 行"
+            echo "$B: $(grep -c "^$B|" /tmp/raw.txt || echo 0) 条"
             echo "::endgroup::"
           done
-          [ -s /tmp/manifests.txt ] || { echo "::error::没有任何可同步的条目"; exit 1; }
-          echo "共 $(( $(wc -l < /tmp/manifests.txt) )) 条待同步"
+          [ -s /tmp/raw.txt ] || { echo "::error::没有任何可同步条目"; exit 1; }
 
-          # ── 2. 按「上游@分支」分组，一次性克隆（需要子目录的用稀疏检出，省流量）──
-          echo "::group::克隆上游仓库"
-          awk -F'|' '{print $3"\t"$4"\t"$5}' /tmp/manifests.txt | sort -u \
-            | awk -F'\t' '{k=$1"@"$2; subs[k]=subs[k]" "$3; r[k]=$1; f[k]=$2} END{for(k in r) print r[k]"\t"f[k]"\t"subs[k]}' \
-            > /tmp/ups-grouped.txt
-          echo "需要 $(( $(wc -l < /tmp/ups-grouped.txt) )) 个 上游@分支"
-          clone_one() {
-            local repo="$1" ref="$2" subs="$3" key
-            key="$(echo "${repo}@${ref}" | tr '/@' '__')"
-            [ -d "/tmp/up/$key/.git" ] && return 0
-            rm -rf "/tmp/up/$key"
-            if [ -z "$ref" ]; then
-              ref="$(git ls-remote --symref "https://github.com/${repo}.git" HEAD 2>/dev/null \
-                     | sed -n 's|^ref: refs/heads/\([^[:space:]]*\).*|\1|p' | head -1)"
-            fi
-            if [ -n "$subs" ] && [ "$subs" != " " ]; then
-              git clone -q --depth=1 --single-branch --branch "$ref" --filter=blob:none --sparse \
-                "https://github.com/${repo}.git" "/tmp/up/$key" 2>/dev/null \
-                && git -C "/tmp/up/$key" sparse-checkout set $subs >/dev/null 2>&1
-            else
-              git clone -q --depth=1 --single-branch --branch "$ref" \
-                "https://github.com/${repo}.git" "/tmp/up/$key" 2>/dev/null
-            fi
-            if [ -d "/tmp/up/$key/.git" ]; then echo "  ✓ ${repo}@${ref}"; else echo "  ✗ ${repo}@${ref}"; rm -rf "/tmp/up/$key"; fi
-          }
-          export -f clone_one
-          while IFS=$'\t' read -r r f s; do
-            clone_one "$r" "$f" "$s" &
-            while [ "$(jobs -r | wc -l)" -ge 8 ]; do sleep 0.3; done
-          done < /tmp/ups-grouped.txt
-          wait
-          echo "克隆完成：成功 $(( $(find /tmp/up -maxdepth 1 -mindepth 1 -type d | wc -l) )) 个"
+          # 1b. 先只把 kenzok8 的目录名列表拿到（不下载内容），用来判断兜底是否可行
+          echo "::group::读取 kenzok8 目录清单"
+          rm -rf /tmp/kz
+          git clone -q --depth=1 --single-branch --branch "$KENZOK8_REF" --filter=blob:none --sparse \
+            "https://github.com/${KENZOK8}.git" /tmp/kz 2>/dev/null || true
+          if [ -d /tmp/kz/.git ]; then
+            git -C /tmp/kz ls-tree --name-only HEAD > /tmp/kz-dirs.txt
+            echo "kenzok8 顶层目录 $(( $(wc -l < /tmp/kz-dirs.txt) )) 个"
+          else
+            : > /tmp/kz-dirs.txt; echo "::warning::kenzok8 拉不下来"
+          fi
           echo "::endgroup::"
 
+          # 1c. 逐条决定来源
+          #     格式：分支|目录|来源(kz/up/fail)|仓库|分支|源子目录|目标子目录(lsub)
+          : > /tmp/plan.txt; : > /tmp/kz-needed.txt; : > /tmp/up-needed.txt
+          while IFS='|' read -r B dir up br sub lsub kz; do
+            if [ "$SYNC_SOURCE" = "upstream" ] && [ -n "$up" ]; then
+              printf '%s|%s|up|%s|%s|%s|%s\n' "$B" "$dir" "$up" "$br" "$sub" "$lsub" >> /tmp/plan.txt
+              printf '%s\t%s\t%s\n' "$up" "$br" "$sub" >> /tmp/up-needed.txt
+            elif grep -qx "$kz" /tmp/kz-dirs.txt; then
+              printf '%s|%s|kz||||%s\n' "$B" "$dir" "$lsub" >> /tmp/plan.txt
+              echo "$kz" >> /tmp/kz-needed.txt
+            elif [ -n "$up" ]; then
+              # kenzok8 没有这个目录 → 回退到它的原始上游（这是关键的回退逻辑）
+              printf '%s|%s|up|%s|%s|%s|%s\n' "$B" "$dir" "$up" "$br" "$sub" "$lsub" >> /tmp/plan.txt
+              printf '%s\t%s\t%s\n' "$up" "$br" "$sub" >> /tmp/up-needed.txt
+            else
+              printf '%s|%s|fail||||\n' "$B" "$dir" >> /tmp/plan.txt
+            fi
+          done < /tmp/raw.txt
+          echo "计划：kenzok8 $(( $(grep -c '|kz|' /tmp/plan.txt || echo 0) )) 条，原始上游 $(( $(grep -c '|up|' /tmp/plan.txt || echo 0) )) 条，无来源 $(( $(grep -c '|fail|' /tmp/plan.txt || echo 0) )) 条"
+
+          # 1d. 需要的内容：kenzok8 稀疏检出 + 回退用的原始上游
+          echo "::group::准备内容"
+          if [ -s /tmp/kz-needed.txt ]; then
+            sort -u /tmp/kz-needed.txt > /tmp/kz-set.txt
+            git -C /tmp/kz sparse-checkout set $(tr '\n' ' ' < /tmp/kz-set.txt) >/dev/null 2>&1 || true
+            git -C /tmp/kz checkout -q 2>/dev/null || true
+            echo "kenzok8 检出 $(( $(wc -l < /tmp/kz-set.txt) )) 个目录"
+          fi
+          if [ -s /tmp/up-needed.txt ]; then
+            sort -u /tmp/up-needed.txt | awk -F'\t' '{k=$1"@"$2; subs[k]=subs[k]" "$3; r[k]=$1; f[k]=$2} END{for(k in r) print r[k]"\t"f[k]"\t"subs[k]}' > /tmp/up-grouped.txt
+            echo "需要 $(( $(wc -l < /tmp/up-grouped.txt) )) 个原始上游（kenzok8 里没有的那些）"
+            clone_one() {
+              local repo="$1" ref="$2" subs="$3" key
+              key="$(echo "${repo}@${ref}" | tr '/@' '__')"
+              [ -d "/tmp/up/$key/.git" ] && return 0
+              rm -rf "/tmp/up/$key"
+              [ -z "$ref" ] && ref="$(git ls-remote --symref "https://github.com/${repo}.git" HEAD 2>/dev/null | sed -n 's|^ref: refs/heads/\([^[:space:]]*\).*|\1|p' | head -1)"
+              if [ -n "$subs" ] && [ "$subs" != " " ]; then
+                git clone -q --depth=1 --single-branch --branch "$ref" --filter=blob:none --sparse "https://github.com/${repo}.git" "/tmp/up/$key" 2>/dev/null \
+                  && git -C "/tmp/up/$key" sparse-checkout set $subs >/dev/null 2>&1
+              else
+                git clone -q --depth=1 --single-branch --branch "$ref" "https://github.com/${repo}.git" "/tmp/up/$key" 2>/dev/null
+              fi
+              if [ -d "/tmp/up/$key/.git" ]; then echo "  ✓ ${repo}@${ref}"; else echo "  ✗ ${repo}@${ref}"; rm -rf "/tmp/up/$key"; fi
+            }
+            export -f clone_one
+            while IFS=$'\t' read -r r f s; do
+              clone_one "$r" "$f" "$s" &
+              while [ "$(jobs -r | wc -l)" -ge 6 ]; do sleep 0.3; done
+            done < /tmp/up-grouped.txt
+            wait
+          fi
+          echo "::endgroup::"
+
+      # ── 2. 逐分支同步 + 推送 ─────────────────────────────────────────────
       - name: 同步并推送
         env:
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
@@ -176,39 +194,43 @@ jobs:
           set -uo pipefail
           AUTH="https://x-access-token:${REPO_TOKEN}@github.com"
           : > /tmp/report.md
-          echo "| 分支 | 目录 | 上游 | 结果 |" >> /tmp/report.md
+          echo "| 分支 | 目录 | 来源 | 结果 |" >> /tmp/report.md
           echo "| --- | --- | --- | --- |" >> /tmp/report.md
-          OK=0; SKIP=0; BAD=0
 
           for B in $(cat /tmp/branches-used.txt); do
             echo "::group::同步分支 $B"
-            D="/tmp/br/$B"; cd "$D"
-            grep "^$B|" /tmp/manifests.txt | while IFS='|' read -r _ dir up br sub lsub; do
-              key="$(echo "${up}@${br}" | tr '/@' '__')"
-              C="/tmp/up/$key"
-              if [ ! -d "$C" ]; then
-                echo "  ✗ $dir : 上游 ${up}@${br} 拉不到"
-                echo "| $B | $dir | ${up}@${br} | 失败（上游拉不到） |" >> /tmp/report.md
+            D="/tmp/br/$B"
+            cd "$D" || { echo "  ✗ 目录没了"; echo "::endgroup::"; continue; }
+            grep "^$B|" /tmp/plan.txt | while IFS='|' read -r _ dir kind up br sub lsub; do
+              if [ "$kind" = "fail" ]; then
+                echo "  ✗ $dir : kenzok8 和原始上游都没有"
+                echo "| $B | $dir | - | 失败（无来源） |" >> /tmp/report.md
                 continue
               fi
-              SRC="$C/${sub:+$sub/}"
+              if [ "$kind" = "kz" ]; then
+                SRC="/tmp/kz/${lsub:-$dir}"; SRCNAME="${KENZOK8}@${KENZOK8_REF}/${lsub:-$dir}"
+              else
+                key="$(echo "${up}@${br}" | tr '/@' '__')"
+                SRC="/tmp/up/$key/${sub:+$sub/}"; SRC="${SRC%/}"
+                SRCNAME="${up}@${br}${sub:+/$sub}"
+              fi
               if [ ! -d "$SRC" ]; then
-                echo "  ✗ $dir : 上游里没这个目录 ${sub:-（根目录）}"
-                echo "| $B | $dir | ${up}@${br}${sub:+/$sub} | 失败（上游无此目录） |" >> /tmp/report.md
+                echo "  ✗ $dir : 来源没有内容（$SRCNAME）"
+                echo "| $B | $dir | $SRCNAME | 失败（来源无内容） |" >> /tmp/report.md
                 continue
               fi
               DST="$D/$dir/${lsub:+$lsub/}"
               mkdir -p "$DST"
-              if rsync -a --delete --exclude '.git' "$SRC" "$DST"; then
-                echo "  ✓ $dir  <-  ${up}@${br}${sub:+/$sub}"
-                echo "| $B | $dir | ${up}@${br}${sub:+/$sub} | ok |" >> /tmp/report.md
+              if rsync -a --delete --exclude '.git' "$SRC/" "$DST"; then
+                echo "  ✓ $dir  <-  $SRCNAME"
+                echo "| $B | $dir | $SRCNAME | ok |" >> /tmp/report.md
               else
                 echo "  ✗ $dir : rsync 失败"
-                echo "| $B | $dir | ${up}@${br} | 失败（rsync） |" >> /tmp/report.md
+                echo "| $B | $dir | $SRCNAME | 失败（rsync） |" >> /tmp/report.md
               fi
             done
 
-            # ── 安全网：把上游引用改写回本账号，别把 281677160/danshui-git 带回来 ──
+            # 安全网：把上游引用改写回本账号
             for pair in \
               '281677160/build-actions:authon/Mine-build-actions' \
               '281677160/common:authon/Mine-common' \
@@ -244,7 +266,7 @@ jobs:
                 echo "::error::分支 $B 推送失败"
               fi
             fi
-            cd /tmp && rm -rf "$D"      # 及时释放磁盘（每个分支好几百 MB）
+            cd /tmp && rm -rf "$D"          # 及时释放磁盘
             echo "::endgroup::"
           done
 
