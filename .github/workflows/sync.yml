@@ -235,17 +235,17 @@ jobs:
 
             # 安全网：把上游引用改写回本账号
             for pair in \
-              '281677160/build-actions:authon/Mine-build-actions' \
-              '281677160/common:authon/Mine-common' \
-              '281677160/openwrt-package:authon/Mine-openwrt-package' \
-              '281677160/luci-theme-argon:authon/Mine-luci-theme-argon' \
-              '281677160/luci-app-autoupdate:authon/Mine-luci-app-autoupdate' \
-              '281677160/bendi:authon/Mine-bendi' \
-              'danshui-git/mt798x-24.10:authon/Mine-mt798x-24.10' \
-              'danshui-git/shuoming:authon/Mine-shuoming' \
-              'danshui-git/debugger-action:authon/Mine-debugger-action' \
-              'danshui-git/free-disk-space:authon/Mine-free-disk-space' \
-              'danshui-git/delete-releases-workflows:authon/Mine-delete-releases-workflows' ; do
+              'authon/Mine-build-actions:authon/Mine-build-actions' \
+              'authon/Mine-common:authon/Mine-common' \
+              'authon/Mine-openwrt-package:authon/Mine-openwrt-package' \
+              'authon/Mine-luci-theme-argon:authon/Mine-luci-theme-argon' \
+              'authon/Mine-luci-app-autoupdate:authon/Mine-luci-app-autoupdate' \
+              'authon/Mine-bendi:authon/Mine-bendi' \
+              'authon/Mine-mt798x-24.10:authon/Mine-mt798x-24.10' \
+              'authon/Mine-shuoming:authon/Mine-shuoming' \
+              'authon/Mine-debugger-action:authon/Mine-debugger-action' \
+              'authon/Mine-free-disk-space:authon/Mine-free-disk-space' \
+              'authon/Mine-delete-releases-workflows:authon/Mine-delete-releases-workflows' ; do
               old="${pair%%:*}"; new="${pair##*:}"
               files="$(git grep -l -F "$old" -- . 2>/dev/null | grep -v '^_sync/' || true)"
               if [ -n "$files" ]; then

@@ -1,0 +1,132 @@
+# LuCI QFirehose 应用
+
+QFirehose (v1.7.1) 的 LuCI 网页界面，为 OpenWrt 设备提供用户友好的移远（Quectel）模组高通固件烧写工具。
+
+## 功能特点
+
+- 全新自定义 DOM 布局，完美兼容 LuCI 主题
+- 模组型号和当前固件版本显示（通过 AT 命令自动检测）
+- 固件上传进度条
+- 支持固件目录、`.zip` 和 `.7z` 压缩包（qfirehose v1.7.1 内置解压）
+- 自动 USB/PCIe 设备检测，支持一键刷新
+- 终端风格实时日志监控
+- 支持多个 USB 端口和设备
+- 存储类型选择（NAND/eMMC/UFS）
+- 可折叠高级选项：MD5 跳过、签名固件、RNDIS 模式、USBMon 日志捕获、全擦除
+- 固件路径支持手动编辑
+- 烧写完成/失败后重置按钮
+- 自动完成/失败检测与状态指示
+
+## 支持的模组
+
+QFirehose v1.7.1 支持众多移远模组，包括：
+
+- EC20、EC25、EG25、EG06、EM05、EM06、EM12、EM20
+- AG35、AG520R、AG525、AG550、AG590
+- AG215S-GLR、AG215S-GLBA
+- RM500Q、RM520N、RG500Q、RG520N
+- SC600Y-EM、SC60-CE
+- 以及更多...
+
+## 依赖包
+
+- luci-base
+- cgi-io（固件文件上传）
+- qfirehose（v1.7.1，自动包含 unzip 和 p7zip 依赖）
+- socat（AT 命令通信，获取模组信息）
+
+## 安装方法
+
+1. 将此仓库添加到您的 OpenWrt 构建系统中
+
+1. 编译软件包：
+
+```bash
+make package/luci-app-qfirehose/compile V=s
+```
+
+1. 在您的 OpenWrt 设备上安装生成的软件包：
+
+```bash
+opkg install luci-app-qfirehose_2.1.1_all.ipk
+```
+
+## 使用方法
+
+1. 访问 OpenWrt 的 LuCI 网页界面
+2. 导航到 调制解调器 -> QFirehose
+3. 上传固件文件（目录、.zip 或 .7z）
+4. 配置选项（端口、设备、存储类型等）
+5. 点击"开始烧写"
+6. 通过日志窗口监控进度
+
+### EDL 保护与烧录中断恢复
+
+模组进入 EDL（`05c6:9008`）后，PBL 只发送一次 Sahara hello 并等待响应；任何向 `ttyUSB0` 发送 AT 命令的探测进程（如 qmodem 的 `modem_scand`、`ubus-at-daemon`）都会使 PBL 进入错误状态，之后只能给模组断电重来。本应用的保护机制（`/usr/sbin/qfirehose-edl-guard`）：
+
+- **通用保护（与系统中跑什么程序无关）**：用户态程序接触 PBL 的唯一途径是内核驱动 `qcserial` 创建的 `/dev/ttyUSB*`。`/etc/hotplug.d/usb/05-qfirehose-edl-guard` 在 `9008` 接口被内核驱动绑定的瞬间将其解绑，系统中不会存在对应的 tty 节点，任何已知或未知的探测程序都无从下手。qfirehose 自身通过 usbfs（`/dev/bus/usb/...`）直接访问设备，不需要 tty，不受影响。模组处于正常模式（`2c7c:xxxx`）时该机制不会触发，系统其余功能不受影响。
+- **辅助保护**：同时停止已知的探测服务（默认 `qmodem_init qmodem_monitor ubus-at-daemon`，可通过 `uci set qfirehose.config.edl_guard_services='...'` 自定义），`9008` 设备消失后自动恢复。
+- `qfirehose-start` 在烧录开始时也会执行一次上述动作，覆盖 hotplug 尚未安装时的模组已在 EDL 的场景。
+
+验证保护是否生效：模组处于 `9008` 时 `ls /dev/ttyUSB*` 应不存在对应节点，`logread | grep qfirehose-edl-guard` 可看到 `detached driver qcserial ...`。
+
+若烧录中途中断（断电、进程崩溃），模组分区已被擦除、只能以 EDL 模式启动。此时**给模组断电一次**（通常重启路由器即可），等 `lsusb` 出现 `05c6:9008` 后直接在 LuCI 中重新烧录即可；hotplug 保护会阻止探测进程干扰。日志中若出现 `Target is in sahara error state` 或 `Target is already in firehose mode`，说明 PBL 状态已脏，需再断电一次。
+
+## 更新日志
+
+### v2.1.2 (2026-09-05)
+
+- **通用 EDL 保护**：新增 `/usr/sbin/qfirehose-edl-guard`，在 `05c6:9008` 接口被内核驱动绑定时立即解绑，从根上消除 tty 节点，不再依赖“已知探测程序列表”
+- 探测服务列表改为 UCI 可配置（`qfirehose.config.edl_guard_services`）
+
+### v2.1.1-r2 / qfirehose 1.7.1-r6 (2026-09-05)
+
+- **修复 SIGTRAP 崩溃**：`unzip_fopen()` 剪除 `/firehose/..` 时使用重叠的 `memcpy`，OpenWrt fortify-headers 检测到重叠即 `__builtin_trap()`；剩余文件名超过 12 字节（如 `devcfg_low_ddr.mbn`）必崩，导致模组变砖。改为 `memmove`
+- **Sahara 握手加固**：hello 丢失时盲发 hello response；识别 `END_IMAGE_TX` 错误态、reset 应答、Firehose 已在运行等情况并给出明确提示；移除会让 SDX62 PBL 进入错误态的 dummy 字节探测
+- **EDL 保护**：烧录期间及 `9008` 设备存在期间自动停止 modem 端口探测服务，详见上文
+
+### v2.1.1 (2026-07-15)
+
+- **QFirehose v1.7.1**：后端 qfirehose 从 v1.4.17 升级到 v1.7.1
+- **RNDIS 模式**：高级选项新增 `-r` 参数，支持从 ECM 切换到 RNDIS 模式（适用于兼容模组）
+- **i18n**：补充新增 RNDIS 选项的中文（zh-Hans）翻译
+
+### v2.1.0 (2026-02-15)
+
+- **界面重写**：从 `form.Map` 改为自定义 DOM 布局，使用 LuCI 原生 `cbi-*` 类，完美兼容各种主题
+- **模组信息**：通过 AT 命令（`ATI`、`AT+QGMR`）自动显示模组型号和当前固件版本
+- **上传进度**：固件文件上传时显示实时进度条
+- **刷新按钮**：「刷新设备」按钮同时刷新模组型号和固件版本信息
+- **高级选项**：可折叠面板，包含 MD5 跳过、签名固件、USBMon 日志捕获（`-u`）、全擦除
+- **可编辑路径**：固件路径输入框支持手动编辑
+- **重置按钮**：烧写完成/失败后可一键重置状态
+- **日志查看器**：终端风格暗色主题，带占位提示文字
+- **实时日志**：直接重定向 stdout/stderr（移除 `tee` 管道），日志即时更新
+- **状态脚本**：简化为纯文本输出，移除脆弱的 JSON 解析
+- **ACL 权限**：更新所有脚本权限，包括 `qfirehose-modem-info`
+- **翻译**：完整的中文（zh-Hans）翻译覆盖
+
+### v2.0.0
+
+- 将 QFirehose 从 v1.2 升级到 v1.4.17
+- 新增 zip/7z 固件包支持（内置解压）
+- 新增存储类型选择（NAND/eMMC/UFS）
+- 新增签名固件支持（-v 参数）
+- 新增 PCIe 设备检测（mhi/wwan）
+- 修复烧写命令参数传递问题
+- 简化启动脚本（移除手动解压逻辑）
+- 改善日志轮询和状态检测
+- 清理 ACL 权限和 init 脚本
+
+## 许可证
+
+本项目采用 GPLv3 许可证 - 详见 LICENSE 文件
+
+## 作者
+
+- Zag (<ntbowen2001@gmail.com>)
+- 主页：<https://pcat.qsim.top>
+
+## 贡献
+
+欢迎提交贡献！请随时提交 Pull Request。
