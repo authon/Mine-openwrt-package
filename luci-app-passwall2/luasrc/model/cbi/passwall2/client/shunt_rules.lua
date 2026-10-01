@@ -1,17 +1,17 @@
 local api = require "luci.passwall2.api"
-local appname = api.appname
+api.set_default_cbi()
+
 local datatypes = api.datatypes
 
-m = Map(appname, "Sing-Box/Xray " .. translate("Shunt Rule"))
+m = Map()
 m.redirect = api.url("rule")
-api.set_apply_on_parse(m)
 
 if not arg[1] or not m:get(arg[1]) then
 	luci.http.redirect(m.redirect)
 end
 
 function m.on_before_save(self)
-	m:set("@global[0]", "flush_set", "1")
+	self:set("@global[0]", "flush_set", "1")
 end
 
 -- Add inline CSS to map description
@@ -43,17 +43,63 @@ function clean_text(text)
 		:gsub("[ \t]*\n[ \t]*", "\n")
 end
 
-s = m:section(NamedSection, arg[1], "shunt_rules", "")
+local remarks_lookup = {}
+local groups = {}
+m:foreach("shunt_rules", function(s)
+	if s[".name"] ~= arg[1] then
+		if s.remarks then
+			remarks_lookup[s.remarks] = s[".name"]
+		end
+		if s.group and s.group ~= "" then
+			groups[s.group] = true
+		end
+	end
+end)
+
+s = m:section(NamedSection, arg[1], "shunt_rules", "Sing-Box/Xray " .. translate("Shunt Rule"))
 s.addremove = false
 s.dynamic = false
 
 remarks = s:option(Value, "remarks", translate("Remarks"))
 remarks.default = arg[1]
 remarks.rmempty = false
+remarks.validate = function(self, value, section)
+	value = api.trim(value)
+	if value == "" then
+		return nil, translate("Remark cannot be empty.")
+	end
+	if remarks_lookup[value] then
+		return nil, translate("This remark already exists, please change a new remark.")
+	end
+	return value
+end
+
+o = s:option(Value, "group", translate("Shunt Rule Group"))
+o.default = ""
+o:value("", translate("default"))
+for k, v in pairs(groups) do
+	o:value(k)
+end
+o.write = function(self, section, value)
+	value = api.trim(value)
+	local lower = value:lower()
+
+	if lower == "" or lower == "default" then
+		return m:del(section, self.option)
+	end
+
+	for _, v in ipairs(self.keylist or {}) do
+		if v:lower() == lower then
+			return m:set(section, self.option, v)
+		end
+	end
+	m:set(section, self.option, value)
+end
 
 protocol = s:option(MultiValue, "protocol", translate("Protocol"))
 protocol:value("http")
 protocol:value("tls")
+protocol:value("quic")
 protocol:value("bittorrent")
 protocol.widget = "checkbox"
 protocol.default = nil
@@ -119,28 +165,6 @@ source.validate = function(self, value, t)
 	return value
 end
 
-local dynamicList_write = function(self, section, value)
-	local t = {}
-	local t2 = {}
-	if type(value) == "table" then
-		local x
-		for _, x in ipairs(value) do
-			if x and #x > 0 then
-				if not t2[x] then
-					t2[x] = x
-					t[#t+1] = x
-				end
-			end
-		end
-	else
-		t = { value }
-	end
-	t = table.concat(t, " ")
-	return DynamicList.write(self, section, t)
-end
-
-source.write = dynamicList_write
-
 --[[
 -- Too low usage rate, hidden
 sourcePort = s:option(Value, "sourcePort", translate("Source port"))
@@ -167,8 +191,8 @@ domain_list.validate = function(self, value)
 			tmp_host = host:gsub("full:", "")
 		elseif host:find("geosite:") and host:find("geosite:") == 1 then
 			flag = 0
-		elseif host:find("ext:") and host:find("ext:") == 1 then
-			flag = 0
+--		elseif host:find("ext:") and host:find("ext:") == 1 then
+--			flag = 0
 		elseif host:find("rule-set:", 1, true) == 1 or host:find("rs:") == 1 then
 			local w = host:sub(host:find(":") + 1, #host)
 			if w:find("local:") == 1 or w:find("remote:") == 1 then
@@ -209,7 +233,7 @@ ip_list.validate = function(self, value)
 	string.gsub(value, "[^\r\n]+", function(w) table.insert(ipmasks, w) end)
 	for index, ipmask in ipairs(ipmasks) do
 		if ipmask:find("geoip:") and ipmask:find("geoip:") == 1 and not ipmask:find("%s") then
-		elseif ipmask:find("ext:") and ipmask:find("ext:") == 1 and not ipmask:find("%s") then
+--		elseif ipmask:find("ext:") and ipmask:find("ext:") == 1 and not ipmask:find("%s") then
 		elseif ipmask:find("rule-set:", 1, true) == 1 or ipmask:find("rs:") == 1 then
 			local w = ipmask:sub(ipmask:find(":") + 1, #ipmask)
 			if w:find("local:") == 1 or w:find("remote:") == 1 then
@@ -240,4 +264,4 @@ ip_list.description = "<br /><ul>"
 
 o = s:option(Flag, "invert", "invert", translate("Invert match result.") .. " " .. translate("Only support Sing-Box."))
 
-return m
+return api.return_map(m)

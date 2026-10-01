@@ -1,67 +1,69 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Copyright (C) 2017-2020 Yousong Zhou <yszhou4tech@gmail.com>
-# Copyright (C) 2021 ImmortalWrt.org
+# Copyright (C) 2025 ImmortalWrt.org
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=tuic-client
-PKG_VERSION:=1.0.0
+PKG_UPSTREAM_VERSION:=2.0.0-dev7
+PKG_VERSION:=2.0.0_pre7
 PKG_RELEASE:=1
 
-PKG_LICENSE_FILES:=LICENSE
+TUIC_HASH_AARCH64:=8bd5069db703993aee8c8d83fc9e9979e2bcc645c366bcb6f5c6da110d3c5ee5
+TUIC_HASH_ARMV7:=5b84acfa582385992d05287e26e1d863b0ac55080fb26300493866305758c357
+TUIC_HASH_ARMV7HF:=2be6e93400528fa49a8114a49420cb0a96402f4c615d8683b9e1863e804c943f
+TUIC_HASH_I686:=d0ba6fe4074bcd47056470985b0adef393342a27f0c2ff6a15c6023f9e43c97c
+TUIC_HASH_X86_64:=6b11db38f4e9737f65a4f77044fa7e4a80d7debfd4dc1f6d32465598c8463b71
+
 PKG_MAINTAINER:=Tianling Shen <cnsztl@immortalwrt.org>
+PKG_LICENSE:=GPL-3.0-or-later
+PKG_LICENSE_FILES:=LICENSE
 
 include $(INCLUDE_DIR)/package.mk
 
-TUIC_TYPE:=tuic-client-$(PKG_VERSION)
-TUIC_FOOT:=unknown-linux-musl
 ifeq ($(ARCH),aarch64)
-	TUIC_ARCH:=$(TUIC_TYPE)-aarch64-$(TUIC_FOOT)
-	PKG_HASH:=c29eaaf3bc05115acc7453ac26bacf9aff65211b1e8ca7f771b818248bec8601
+	TUIC_ARCH:=tuic-client-aarch64-linux-musl
+	PKG_HASH:=$(TUIC_HASH_AARCH64)
 else ifeq ($(ARCH),arm)
-# Referred to golang/golang-values.mk
 	ARM_CPU_FEATURES:=$(word 2,$(subst +,$(space),$(call qstrip,$(CONFIG_CPU_TYPE))))
 	ifeq ($(ARM_CPU_FEATURES),)
-		TUIC_ARCH:=$(TUIC_TYPE)-armv7-$(TUIC_FOOT)eabi
-		PKG_HASH:=33a83ab05dc1a598552bf1f27114502b12c94b6e5333c6ac2def3739c00a4daf
+		TUIC_ARCH:=tuic-client-armv7-linux-musl
+		PKG_HASH:=$(TUIC_HASH_ARMV7)
 	else
-		TUIC_ARCH:=$(TUIC_TYPE)-armv7-$(TUIC_FOOT)eabihf
-		PKG_HASH:=e2cc1d81ac376ff2a94976e78c861f5cd21ad809ff5b587ae967e2a63e4c35e4
+		TUIC_ARCH:=tuic-client-armv7-linux-muslhf
+		PKG_HASH:=$(TUIC_HASH_ARMV7HF)
 	endif
 else ifeq ($(ARCH),i386)
-	TUIC_ARCH:=$(TUIC_TYPE)-i686-$(TUIC_FOOT)
-	PKG_HASH:=67d930b4381a8848bf98acbccb538c73b72ca9dde0aed3705f73e62a9922f758
+	TUIC_ARCH:=tuic-client-i686-linux-musl
+	PKG_HASH:=$(TUIC_HASH_I686)
 else ifeq ($(ARCH),x86_64)
-	TUIC_ARCH:=$(TUIC_TYPE)-x86_64-$(TUIC_FOOT)
-	PKG_HASH:=180c562691247a7feddf553706bc8fd5b5b9de3027154f94a767ea907a45e2de
-# Set the default value to make OpenWrt Package Checker happy
+	TUIC_ARCH:=tuic-client-x86_64-linux-musl
+	PKG_HASH:=$(TUIC_HASH_X86_64)
 else
-  PKG_SOURCE:=dummy
-  PKG_HASH:=dummy
+	PKG_SOURCE:=dummy
+	PKG_HASH:=dummy
 endif
 
 define Download/tuic-client
-	URL:=https://github.com/EAimTY/tuic/releases/download/$(TUIC_TYPE)/
+	URL:=https://github.com/Itsusinn/tuic/releases/download/v$(PKG_UPSTREAM_VERSION)/
 	URL_FILE:=$(TUIC_ARCH)
-	FILE:=$(TUIC_ARCH)
+	FILE:=$(TUIC_ARCH)-$(PKG_UPSTREAM_VERSION)
 	HASH:=$(PKG_HASH)
 endef
 
+$(eval $(call Download,tuic-client))
+
 define Package/tuic-client
-	SECTION:=net
-	CATEGORY:=Network
-	SUBMENU:=Web Servers/Proxies
-	TITLE:=Delicately-TUICed 0-RTT proxy protocol
-	URL:=https://github.com/EAimTY/tuic/
-	DEPENDS:=@USE_MUSL @(aarch64||arm_v7||i386||x86_64) @!(TARGET_x86_geode||TARGET_x86_legacy)
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=Web Servers/Proxies
+  TITLE:=TUIC proxy protocol client
+  URL:=https://github.com/Itsusinn/tuic
+  DEPENDS:=@USE_MUSL @(aarch64||arm_v7||i386||x86_64) @!(TARGET_x86_geode||TARGET_x86_legacy)
 endef
 
-define Build/Prepare
-	$(call Build/Prepare/Default)
-ifneq ($(CONFIG_PACKAGE_tuic-client),)
-	$(call Download,tuic-client)
-endif
+define Package/tuic-client/description
+  Delicately-TUICed 0-RTT proxy protocol client.
 endef
 
 define Build/Compile
@@ -69,7 +71,7 @@ endef
 
 define Package/tuic-client/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(DL_DIR)/$(TUIC_ARCH) $(1)/usr/bin/tuic-client
+	$(INSTALL_BIN) $(DL_DIR)/$(TUIC_ARCH)-$(PKG_UPSTREAM_VERSION) $(1)/usr/bin/tuic-client
 endef
 
 $(eval $(call BuildPackage,tuic-client))

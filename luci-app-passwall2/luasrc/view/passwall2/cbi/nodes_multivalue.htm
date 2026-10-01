@@ -64,9 +64,11 @@ end
 %>
 
 <div id="<%=cbid%>" class="cbi-input-select" style="display:inline-block;">
-	<select id="<%=cbid%>.ref" class="cbi-input-select" style="display:none !important;">
-		<option value>placeholder</option>
-	</select>
+	<div style="display:none !important;">
+		<select id="<%=cbid%>.ref" class="cbi-input-select" style="display:none !important;">
+			<option value>placeholder</option>
+		</select>
+	</div>
 	<!-- 搜索框 -->
 	<input type="text" id="<%=cbid%>.search"
 		class="mv_search_input cbi-input-text"
@@ -108,7 +110,6 @@ end
 		<span id="count-<%=self.option%>" style="color:#666;"><%:Selected:%> <span style='color:red;'><%=selected_count%>/<%=total_count%></span></span>
 	</div>
 </div>
-<%+cbi/valuefooter%>
 
 <script type="text/javascript">
 //<![CDATA[
@@ -129,3 +130,5 @@ end
 })();
 //]]>
 </script>
+
+<%+cbi/valuefooter%>

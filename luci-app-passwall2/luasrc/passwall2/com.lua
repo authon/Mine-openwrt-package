@@ -10,21 +10,6 @@ local function gh_pre_release_url(self)
 	return "https://github.com/Openwrt-Passwall/openwrt-passwall-packages/releases/download/api-cache/" .. string.lower(self.name) .. "-pre-release-api.json"
 end
 
-_M.hysteria = {
-	name = "Hysteria",
-	repo = "HyNetwork/hysteria",
-	get_url = gh_release_url,
-	cmd_version = "version | awk '/^Version:/ {print $2}'",
-	remote_version_str_replace = "app/",
-	zipped = false,
-	default_path = "/usr/bin/hysteria",
-	match_fmt_str = "linux%%-%s$",
-	file_tree = {
-		armv6 = "arm",
-		armv7 = "arm"
-	}
-}
-
 _M["sing-box"] = {
 	name = "Sing-Box",
 	repo = "SagerNet/sing-box",
@@ -35,8 +20,17 @@ _M["sing-box"] = {
 	default_path = "/usr/bin/sing-box",
 	match_fmt_str = "linux%%-%s",
 	file_tree = {
-		x86_64 = "amd64",
-		mips64el = "mips64le"
+		x86_64 = "amd64%-musl",
+		x86     = "386%-musl",
+		aarch64 = "arm64%-musl",
+		rockchip = "arm64%-musl",
+		mips    = "mips%-softfloat",
+		mips64  = "mips64%-softfloat",
+		mipsel  = "mipsle%-softfloat%-musl",
+		mips64el = "mips64le%-softfloat",
+		armv7   = "armv7%-musl",
+		armv8   = "arm64%-musl",
+		riscv64 = "riscv64%-musl"
 	}
 }
 

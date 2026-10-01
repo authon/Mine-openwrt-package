@@ -1,12 +1,16 @@
 module("luci.passwall2.util_shadowsocks", package.seeall)
 local api = require "luci.passwall2.api"
-local uci = api.uci
 local jsonc = api.jsonc
 
 function gen_config_server(node)
+	local user = nil
+	if node.user then
+		user = api.uci_get_s(node.user)
+	end
+
 	local config = {}
 	config.server_port = tonumber(node.port)
-	config.password = node.password
+	config.password = user and user.password or ""
 	config.timeout = tonumber(node.timeout)
 	config.fast_open = (node.tcp_fast_open and node.tcp_fast_open == "1") and true or false
 	config.method = node.method
@@ -31,25 +35,25 @@ end
 local plugin_sh, plugin_bin
 
 function gen_config(var)
-	local node_id = var["-node"]
+	local node_id = var["node"]
 	if not node_id then
-		print("-node Cannot be empty!")
+		print("node Cannot be empty!")
 		return
 	end
-	local node = uci:get_all("passwall2", node_id)
-	local server_host = var["-server_host"] or node.address
-	local server_port = var["-server_port"] or node.port
-	local local_addr = var["-local_addr"]
-	local local_port = var["-local_port"]
-	local mode = var["-mode"]
-	local local_socks_address = var["-local_socks_address"] or "0.0.0.0"
-	local local_socks_port = var["-local_socks_port"]
-	local local_socks_username = var["-local_socks_username"]
-	local local_socks_password = var["-local_socks_password"]
-	local local_http_address = var["-local_http_address"] or "0.0.0.0"
-	local local_http_port = var["-local_http_port"]
-	local local_http_username = var["-local_http_username"]
-	local local_http_password = var["-local_http_password"]
+	local node = api.uci_get_c(node_id)
+	local server_host = var["server_host"] or (node.address or ""):lower()
+	local server_port = var["server_port"] or node.port
+	local local_addr = var["local_addr"]
+	local local_port = var["local_port"]
+	local mode = var["mode"]
+	local local_socks_address = var["local_socks_address"] or "0.0.0.0"
+	local local_socks_port = var["local_socks_port"]
+	local local_socks_username = var["local_socks_username"]
+	local local_socks_password = var["local_socks_password"]
+	local local_http_address = var["local_http_address"] or "0.0.0.0"
+	local local_http_port = var["local_http_port"]
+	local local_http_username = var["local_http_username"]
+	local local_http_password = var["local_http_password"]
 
 	if api.is_ipv6(server_host) then
 		server_host = api.get_ipv6_only(server_host)
@@ -58,7 +62,7 @@ function gen_config(var)
 
 	local plugin_file
 	if node.plugin and node.plugin ~= "" and node.plugin ~= "none" then
-		plugin_sh = var["-plugin_sh"] or ""
+		plugin_sh = var["plugin_sh"] or ""
 		plugin_file = (plugin_sh ~="") and plugin_sh or node.plugin
 		plugin_bin = node.plugin
 	end
@@ -71,15 +75,11 @@ function gen_config(var)
 		password = node.password,
 		method = node.method,
 		timeout = tonumber(node.timeout),
-		fast_open = (node.tcp_fast_open and node.tcp_fast_open == "true") and true or false,
+		fast_open = (node.tcp_fast_open and node.tcp_fast_open == "1") and true or false,
 		reuse_port = true
 	}
 	
-	if node.type == "SS" then
-		config.plugin = plugin_file or nil
-		config.plugin_opts = (plugin_file) and node.plugin_opts or nil
-		config.mode = mode
-	elseif node.type == "SSR" then
+	if node.type == "SSR" then
 		config.protocol = node.protocol
 		config.protocol_param = node.protocol_param
 		config.obfs = node.obfs
@@ -98,7 +98,7 @@ function gen_config(var)
 				}
 			},
 			locals = {},
-			fast_open = (node.tcp_fast_open and node.tcp_fast_open == "true") and true or false
+			fast_open = (node.tcp_fast_open and node.tcp_fast_open == "1") and true or false
 		}
 		if local_socks_address and local_socks_port then
 			table.insert(config.locals, {
@@ -124,7 +124,11 @@ _G.gen_config = gen_config
 if arg[1] then
 	local func =_G[arg[1]]
 	if func then
-		print(func(api.get_function_args(arg)))
+		local var = nil
+		if arg[2] then
+			var = jsonc.parse(arg[2])
+		end
+		print(func(var))
 		if plugin_sh and plugin_sh ~="" and plugin_bin then
 			local f = io.open(plugin_sh, "w")
 			f:write("#!/bin/sh\n")

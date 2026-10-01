@@ -1,20 +1,12 @@
-#
-# Copyright (C) 2018-2019 wongsyrone
-#
-# This is free software, licensed under the GNU General Public License v3.
-# See /LICENSE for more information.
-#
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=trojan-plus
-PKG_VERSION:=10.0.3
-PKG_RELEASE:=2
+PKG_VERSION:=10.0.6
+PKG_RELEASE:=1
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/peter-tank/trojan-plus.git
-PKG_SOURCE_DATE:=2020-09-06
-PKG_SOURCE_VERSION:=a6394cdd718669b0c7491493a78e61f6f0f899b3
-PKG_MIRROR_HASH:=0bc832390044668dc163e9fec3c6cf7ac3037dc30a706e94292d974446c43d97
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://codeload.github.com/kenzok8/trojan-plus/tar.gz/v$(PKG_VERSION)?
+PKG_HASH:=ca23338ca8e6e2e564d1faab16bf93dbb2d3de69c3bceeb5c1b58587fa3a1f08
 
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_DEPENDS:=openssl
@@ -25,7 +17,6 @@ PKG_MAINTAINER:=Trojan-Plus-Group
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
-include ./boost-version.mk
 
 TARGET_CXXFLAGS += -Wall -Wextra
 TARGET_CXXFLAGS += $(FPIC)
@@ -56,11 +47,10 @@ define Package/trojan-plus
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=An unidentifiable mechanism that helps you bypass GFW. It's compatible with original trojan with experimental features.
-	URL:=https://github.com/Trojan-Plus-Group/trojan-plus
+	URL:=https://github.com/kenzok8/trojan-plus
 	DEPENDS:= \
 		+libpthread +libstdcpp +libopenssl \
-		+boost +boost-program_options \
-		$(if $(filter y,$(NEED_BOOST_SYSTEM)),,+boost-system)
+		+boost +boost-system +boost-program_options
 endef
 
 define Package/trojan-plus/install
