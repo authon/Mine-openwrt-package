@@ -76,6 +76,8 @@ SYNC_SOURCE="kenzok8"     # 默认：全部从 kenzok8/small-package 取同名�
 ```
 
 * `kenzok8`：内容和你现在仓库里的一致（实测同一文件的 git blob SHA 逐一相同），它每天更新 5~8 次
+  * **kenzok8 里没有的目录会自动回退到它的原始上游**（例如 `luci-app-advancedplus`、`luci-app-partexp`
+    这类 kenzok8 没收录的），所以默认模式下不会有插件被漏掉
 * `upstream`：作者还在维护的插件能早几小时拿到；清单里写 `@kenzok8` 或验证不过的仍走 kenzok8
 * **开关只影响"从哪拿"，不会改动 `plugins.txt` 里记录的原始上游清单**，随时可以来回切
 
