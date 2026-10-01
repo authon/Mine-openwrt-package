@@ -20,10 +20,10 @@
                 </div>
                 <footer class="mobile-hide">
 
-		<a class="luci-link" href="/cgi-bin/luci/admin/status/overview">
-			
-		
-		<%= ver.distversion %> </a>
+		<a class="luci-link" href="https://github.com/openwrt/luci">Powered by <%= ver.luciname %>
+			(<%= ver.luciversion %>)</a> /
+		<a href="https://github.com/sirpdboy/luci-theme-opentopd">OpentopdTheme <%# vPKG_VERSION %></a> /
+		<%= ver.distversion %>
                     <% if #categories > 1 then %>
                     <ul class="breadcrumb pull-right" id="modemenu">
                         <% for i, r in ipairs(categories) do %>
