@@ -1,0 +1,264 @@
+name: 同步插件
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  从每个插件的【原始上游仓库】拉最新代码，覆盖到本仓库对应分支的插件目录。
+#  找不到原始上游的插件，清单里写 @kenzok8，会从 kenzok8/small-package 兜底同步。
+#
+#  清单在哪：每个分支根目录的 _sync/plugins.txt
+#  怎么加插件：切到目标分支 → 编辑 _sync/plugins.txt → 加一行 → 提交，
+#             然后到 Actions → 同步插件 → Run workflow 跑一次
+#  格式说明见：_sync/README.md
+#
+#  手动运行参数：
+#    BRANCHES  留空 = 全部 11 个分支；也可以填 "Immortalwrt,Lede"
+#    DRY_RUN   1 = 只对比不推送（先看报告，推荐第一次这样跑）
+#    ONLY_DIR  只同步某一个插件目录（调试用），留空 = 全部
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      BRANCHES:
+        description: '要同步的分支，逗号分隔；留空 = 全部 11 个'
+        required: false
+        default: ''
+      DRY_RUN:
+        description: '只对比不推送（1 = 是，推荐第一次先这样跑）'
+        required: false
+        default: '1'
+      ONLY_DIR:
+        description: '只同步这个插件目录（留空 = 全部）'
+        required: false
+        default: ''
+  schedule:
+    - cron: '30 10 */2 * *'      # 每 2 天 10:30 UTC = 北京 18:30
+
+env:
+  TZ: Asia/Shanghai
+  REPO: authon/Mine-openwrt-package
+  ALL_BRANCHES: Immortalwrt,Lede,Lienol,Mt798x,Official,Theme1,Theme2,Xwrt,adguard,helloworld,passwall
+  KENZOK8: kenzok8/small-package
+  KENZOK8_REF: main
+
+jobs:
+  sync:
+    name: 同步插件
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: 部署环境
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install -y git rsync
+          sudo timedatectl set-timezone "$TZ"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global advice.detachedHead false
+
+      - name: 参数
+        id: plan
+        run: |
+          LIST="${{ github.event.inputs.BRANCHES }}"
+          [ -z "$LIST" ] && LIST="$ALL_BRANCHES"
+          echo "branches=$LIST"                            >> $GITHUB_OUTPUT
+          echo "dry=${{ github.event.inputs.DRY_RUN }}"    >> $GITHUB_OUTPUT
+          echo "only=${{ github.event.inputs.ONLY_DIR }}"  >> $GITHUB_OUTPUT
+          echo "本次分支: $LIST"
+
+      - name: 收集清单并克隆上游
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          BRANCHES: ${{ steps.plan.outputs.branches }}
+          ONLY_DIR: ${{ steps.plan.outputs.only }}
+        run: |
+          set -uo pipefail
+          if [ -z "${REPO_TOKEN:-}" ]; then
+            echo "::error::没有 REPO_TOKEN 密匙（仓库 Settings → Secrets and variables → Actions）"
+            exit 1
+          fi
+          AUTH="https://x-access-token:${REPO_TOKEN}@github.com"
+          ONLY="${ONLY_DIR:-}"
+          mkdir -p /tmp/up /tmp/br
+          : > /tmp/manifests.txt
+          : > /tmp/branches-used.txt
+
+          # ── 0. 读默认分支上的 _sync/settings.ini，决定从哪拿代码 ──
+          DEF="$(curl -s -H "Authorization: Bearer ${REPO_TOKEN}" "https://api.github.com/repos/${REPO}" \
+                 | sed -n 's/.*"default_branch": *"\([^"]*\)".*/\1/p' | head -1)"
+          [ -z "$DEF" ] && DEF=Lede
+          SETTINGS="$(curl -s "https://raw.githubusercontent.com/${REPO}/${DEF}/_sync/settings.ini")"
+          SYNC_SOURCE="$(printf '%s\n' "$SETTINGS" | sed -n 's/^[[:space:]]*SYNC_SOURCE[[:space:]]*=[[:space:]]*//p' | tr -d '"' | head -1)"
+          SYNC_SOURCE="${SYNC_SOURCE:-kenzok8}"
+          echo "默认分支 = ${DEF}"
+          echo "SYNC_SOURCE = ${SYNC_SOURCE}  （kenzok8 = 全部走 kenzok8；upstream = 优先走原始上游）"
+          if [ "$SYNC_SOURCE" != "upstream" ]; then
+            echo "→ 本次全部从 ${KENZOK8} 取（清单里的原始上游仅作记录）"
+          else
+            echo "→ 本次优先按清单里的原始上游取，取不到才用 ${KENZOK8}"
+          fi
+
+          # ── 1. 拉每个分支，收集清单（规范化成 5 列：分支|目录|上游|分支|源子目录|目标子目录）──
+          for B in ${BRANCHES//,/ }; do
+            echo "::group::拉取分支 $B"
+            if ! git clone -q --depth=1 --single-branch --branch "$B" "${AUTH}/${REPO}.git" "/tmp/br/$B"; then
+              echo "::warning::分支 $B 拉不下来，跳过"
+              echo "::endgroup::"; continue
+            fi
+            M="/tmp/br/$B/_sync/plugins.txt"
+            if [ ! -f "$M" ]; then
+              echo "::warning::分支 $B 没有 _sync/plugins.txt，跳过"
+              echo "::endgroup::"; continue
+            fi
+            echo "$B" >> /tmp/branches-used.txt
+            grep -v -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$M" | while IFS='|' read -r dir up br sub lsub note; do
+              dir="$(echo "${dir:-}" | xargs)"; up="$(echo "${up:-}" | xargs)"
+              br="$(echo "${br:-}" | xargs)";   sub="$(echo "${sub:-}" | xargs)"; lsub="$(echo "${lsub:-}" | xargs)"
+              [ -z "$dir" ] && continue
+              [ -n "$ONLY" ] && [ "$dir" != "$ONLY" ] && continue
+              [ "$up" = "@frozen" ] && continue
+              # 开关：非 upstream 模式下一律改走 kenzok8（下面那段会按同名目录补 sub）
+              [ "$SYNC_SOURCE" != "upstream" ] && up="@kenzok8"
+              if [ "$up" = "@kenzok8" ]; then
+                up="$KENZOK8"; br="$KENZOK8_REF"
+                [ -z "$sub" ] && sub="${lsub:-$dir}"
+              fi
+              printf '%s|%s|%s|%s|%s|%s\n' "$B" "$dir" "$up" "$br" "$sub" "$lsub" >> /tmp/manifests.txt
+            done
+            echo "$B: 清单 $(grep -vc -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$M") 行"
+            echo "::endgroup::"
+          done
+          [ -s /tmp/manifests.txt ] || { echo "::error::没有任何可同步的条目"; exit 1; }
+          echo "共 $(( $(wc -l < /tmp/manifests.txt) )) 条待同步"
+
+          # ── 2. 按「上游@分支」分组，一次性克隆（需要子目录的用稀疏检出，省流量）──
+          echo "::group::克隆上游仓库"
+          awk -F'|' '{print $3"\t"$4"\t"$5}' /tmp/manifests.txt | sort -u \
+            | awk -F'\t' '{k=$1"@"$2; subs[k]=subs[k]" "$3; r[k]=$1; f[k]=$2} END{for(k in r) print r[k]"\t"f[k]"\t"subs[k]}' \
+            > /tmp/ups-grouped.txt
+          echo "需要 $(( $(wc -l < /tmp/ups-grouped.txt) )) 个 上游@分支"
+          clone_one() {
+            local repo="$1" ref="$2" subs="$3" key
+            key="$(echo "${repo}@${ref}" | tr '/@' '__')"
+            [ -d "/tmp/up/$key/.git" ] && return 0
+            rm -rf "/tmp/up/$key"
+            if [ -z "$ref" ]; then
+              ref="$(git ls-remote --symref "https://github.com/${repo}.git" HEAD 2>/dev/null \
+                     | sed -n 's|^ref: refs/heads/\([^[:space:]]*\).*|\1|p' | head -1)"
+            fi
+            if [ -n "$subs" ] && [ "$subs" != " " ]; then
+              git clone -q --depth=1 --single-branch --branch "$ref" --filter=blob:none --sparse \
+                "https://github.com/${repo}.git" "/tmp/up/$key" 2>/dev/null \
+                && git -C "/tmp/up/$key" sparse-checkout set $subs >/dev/null 2>&1
+            else
+              git clone -q --depth=1 --single-branch --branch "$ref" \
+                "https://github.com/${repo}.git" "/tmp/up/$key" 2>/dev/null
+            fi
+            if [ -d "/tmp/up/$key/.git" ]; then echo "  ✓ ${repo}@${ref}"; else echo "  ✗ ${repo}@${ref}"; rm -rf "/tmp/up/$key"; fi
+          }
+          export -f clone_one
+          while IFS=$'\t' read -r r f s; do
+            clone_one "$r" "$f" "$s" &
+            while [ "$(jobs -r | wc -l)" -ge 8 ]; do sleep 0.3; done
+          done < /tmp/ups-grouped.txt
+          wait
+          echo "克隆完成：成功 $(( $(find /tmp/up -maxdepth 1 -mindepth 1 -type d | wc -l) )) 个"
+          echo "::endgroup::"
+
+      - name: 同步并推送
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          DRY_RUN: ${{ steps.plan.outputs.dry }}
+        run: |
+          set -uo pipefail
+          AUTH="https://x-access-token:${REPO_TOKEN}@github.com"
+          : > /tmp/report.md
+          echo "| 分支 | 目录 | 上游 | 结果 |" >> /tmp/report.md
+          echo "| --- | --- | --- | --- |" >> /tmp/report.md
+          OK=0; SKIP=0; BAD=0
+
+          for B in $(cat /tmp/branches-used.txt); do
+            echo "::group::同步分支 $B"
+            D="/tmp/br/$B"; cd "$D"
+            grep "^$B|" /tmp/manifests.txt | while IFS='|' read -r _ dir up br sub lsub; do
+              key="$(echo "${up}@${br}" | tr '/@' '__')"
+              C="/tmp/up/$key"
+              if [ ! -d "$C" ]; then
+                echo "  ✗ $dir : 上游 ${up}@${br} 拉不到"
+                echo "| $B | $dir | ${up}@${br} | 失败（上游拉不到） |" >> /tmp/report.md
+                continue
+              fi
+              SRC="$C/${sub:+$sub/}"
+              if [ ! -d "$SRC" ]; then
+                echo "  ✗ $dir : 上游里没这个目录 ${sub:-（根目录）}"
+                echo "| $B | $dir | ${up}@${br}${sub:+/$sub} | 失败（上游无此目录） |" >> /tmp/report.md
+                continue
+              fi
+              DST="$D/$dir/${lsub:+$lsub/}"
+              mkdir -p "$DST"
+              if rsync -a --delete --exclude '.git' "$SRC" "$DST"; then
+                echo "  ✓ $dir  <-  ${up}@${br}${sub:+/$sub}"
+                echo "| $B | $dir | ${up}@${br}${sub:+/$sub} | ok |" >> /tmp/report.md
+              else
+                echo "  ✗ $dir : rsync 失败"
+                echo "| $B | $dir | ${up}@${br} | 失败（rsync） |" >> /tmp/report.md
+              fi
+            done
+
+            # ── 安全网：把上游引用改写回本账号，别把 281677160/danshui-git 带回来 ──
+            for pair in \
+              '281677160/build-actions:authon/Mine-build-actions' \
+              '281677160/common:authon/Mine-common' \
+              '281677160/openwrt-package:authon/Mine-openwrt-package' \
+              '281677160/luci-theme-argon:authon/Mine-luci-theme-argon' \
+              '281677160/luci-app-autoupdate:authon/Mine-luci-app-autoupdate' \
+              '281677160/bendi:authon/Mine-bendi' \
+              'danshui-git/mt798x-24.10:authon/Mine-mt798x-24.10' \
+              'danshui-git/shuoming:authon/Mine-shuoming' \
+              'danshui-git/debugger-action:authon/Mine-debugger-action' \
+              'danshui-git/free-disk-space:authon/Mine-free-disk-space' \
+              'danshui-git/delete-releases-workflows:authon/Mine-delete-releases-workflows' ; do
+              old="${pair%%:*}"; new="${pair##*:}"
+              files="$(git grep -l -F "$old" -- . 2>/dev/null | grep -v '^_sync/' || true)"
+              if [ -n "$files" ]; then
+                echo "  改写 $old -> $new （$(echo "$files" | wc -l) 个文件）"
+                echo "$files" | xargs -r sed -i "s|$old|$new|g"
+              fi
+            done
+
+            CHANGED="$(git status --porcelain | wc -l)"
+            if [ "$CHANGED" = "0" ]; then
+              echo "  没有变化"
+            elif [ "${DRY_RUN}" = "1" ]; then
+              echo "  [DRY RUN] $CHANGED 处改动，不推送。改动最多的目录："
+              git status --porcelain | awk '{print $NF}' | cut -d/ -f1-2 | sort | uniq -c | sort -rn | head -20
+            else
+              git add -A
+              git commit -q -m "同步插件于$(date +%Y年%m月%d号-%H点%M分)"
+              if git push -q "${AUTH}/${REPO}.git" "HEAD:${B}"; then
+                echo "  已推送 $(git log --oneline -1)"
+              else
+                echo "::error::分支 $B 推送失败"
+              fi
+            fi
+            cd /tmp && rm -rf "$D"      # 及时释放磁盘（每个分支好几百 MB）
+            echo "::endgroup::"
+          done
+
+      - name: 报告
+        if: always()
+        run: |
+          [ -f /tmp/report.md ] && cat /tmp/report.md
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f /tmp/report.md ]; then
+            {
+              echo "## 插件同步报告"
+              echo ""
+              echo "- 模式：$([ "${{ github.event.inputs.DRY_RUN }}" = "1" ] && echo '只对比不推送' || echo '同步并推送')"
+              echo "- 时间：$(date '+%Y-%m-%d %H:%M:%S')"
+              echo ""
+              cat /tmp/report.md
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
