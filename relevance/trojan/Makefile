@@ -7,23 +7,22 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=trojan
-PKG_VERSION:=1.16.0
-PKG_RELEASE:=2
+PKG_VERSION:=1.17.2
+PKG_RELEASE:=1
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/trojan-gfw/trojan/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=86cdb2685bb03a63b62ce06545c41189952f1ec4a0cd9147450312ed70956cbc
+PKG_SOURCE:=Trojan-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://codeload.github.com/kenzok8/trojan/tar.gz/v$(PKG_VERSION)?
+PKG_HASH:=922e18272e06a61dd91a098716e738e580b74431443583dda3c5e9ee1a446e2e
 
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_DEPENDS:=openssl
 
 PKG_LICENSE:=GPL-3.0
-PKG_LICENSE_FILE:=LICENSE
+PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=GreaterFire
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
-include ./boost-version.mk
 
 TARGET_CXXFLAGS += -Wall -Wextra
 TARGET_CXXFLAGS += $(FPIC)
@@ -55,11 +54,10 @@ define Package/trojan
   CATEGORY:=Network
   SUBMENU:=Web Servers/Proxies
   TITLE:=An unidentifiable mechanism that helps you bypass GFW
-  URL:=https://github.com/trojan-gfw/trojan
+  URL:=https://github.com/kenzok8/trojan
   DEPENDS:= \
     +libpthread +libstdcpp +libopenssl \
-    +boost +boost-program_options +boost-date_time \
-    $(if $(filter y,$(NEED_BOOST_SYSTEM)),,+boost-system)
+    +boost +boost-system +boost-program_options +boost-date_time
 endef
 
 define Package/trojan/install
