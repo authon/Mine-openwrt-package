@@ -45,6 +45,7 @@ luci-app-msd_lite|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
 luci-app-natter|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
 luci-app-natter2|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
 luci-app-nikki|@kenzok8||||原始上游未达 0.90（0.75），kenzok8 兜底
+nikki|nikkinikki-org/OpenWrt-nikki|main|nikki||nikki 内核包（luci-app-nikki 的依赖；上游一个 feed 同时提供 nikki 和 luci-app-nikki）
 luci-app-oled|@kenzok8||||原始上游未达 0.90（0.76），kenzok8 兜底
 luci-app-poweroffdevice|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
 luci-app-pushbot|@kenzok8||||原始上游未达 0.90（0.72），kenzok8 兜底
