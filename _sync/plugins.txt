@@ -58,7 +58,6 @@ luci-app-webd|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
 luci-theme-istorenas|@kenzok8||||原始上游未达 0.90（0.00），kenzok8 兜底
 
 # ── 冻结，不更新（你想接手就把它改成真实上游）──
-luci-app-qmodem|@frozen||||没找到可用上游，保持现状
 
 # ── relevance/ 里面的依赖包 ──
 relevance|@frozen||WiFiPortal|WiFiPortal|没找到上游，保持现状
